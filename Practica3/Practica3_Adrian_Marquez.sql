@@ -43,7 +43,7 @@ ALTER USER 'gestor_tienda'@'localhost' ATTRIBUTE '{"idle_timeout": 3600, "sessio
 CREATE ROLE 'rol_consultor';
 
 -- 2. Concesión de privilegios al rol:
--- Otorga permisos de solo lectura (SELECT) sobre toda la base de datos 'tienda_informatica'.
+-- Otorgamos permisos de solo lectura (SELECT) sobre toda la base de datos 'tienda_informatica'.
 GRANT SELECT ON tienda_informatica.* TO 'rol_consultor';
 
 -- 3. Asignación y rol por defecto:
@@ -73,20 +73,17 @@ GRANT SELECT ON tienda_informatica.v_tecnicos_activos TO 'gestor_tienda'@'localh
    Si el usuario 'gestor_tienda' intenta ejecutar:
    SELECT * FROM tecnicos;
    
-   El SGBD devolverá un error de denegación de permisos:
-   ERROR 1142 (42000): SELECT command denied to user 'gestor_tienda'@'localhost' for table 'tecnicos'
-   
-   Esto demuestra el cumplimiento estricto del principio de menor privilegio, forzando
+   El SGBD devolverá un error de denegación de permisos.
+   Esto demuestra el cumplimiento del principio de menor privilegio, forzando
    al usuario a consultar exclusivamente la vista enmascarada 'v_tecnicos_activos'.
 */
-
 
 -- =============================================================================
 -- TAREA 4: Consistencia y control con WITH CHECK OPTION
 -- =============================================================================
 
 -- 1. Vista con restricción de dominio:
--- Filtra productos con precio <= 50.00, incorporando WITH CHECK OPTION para validar inserciones/actualizaciones.
+-- Filtramos productos con precio <= 50.00, incorporando WITH CHECK OPTION para validar inserciones/actualizaciones.
 CREATE OR REPLACE VIEW v_articulos_gama_baja AS
 SELECT id, nombre, precio, fabricante_id
 FROM articulos
@@ -98,8 +95,7 @@ WITH CHECK OPTION;
    Si intentamos insertar un artículo con precio superior al rango permitido a través de la vista:
    INSERT INTO v_articulos_gama_baja (nombre, precio, fabricante_id) VALUES ('Tarjeta Gráfica RTX', 250.00, 2);
    
-   El SGBD rechaza la operación inmediatamente devolviendo el siguiente error:
-   ERROR 1369 (HY000): CHECK OPTION failed 'tienda_informatica.v_articulos_gama_baja'
+   El SGBD rechaza la operación inmediatamente devolviendo el siguiente error
    
    Esto ocurre porque la cláusula WITH CHECK OPTION obliga a que cualquier fila insertada 
    o modificada a través de la vista cumpla estrictamente con la condición de la cláusula WHERE (precio <= 50.00).
@@ -120,14 +116,13 @@ SHOW ACTIVE ROLES;
    ¿Por qué en entornos de producción nunca se debe otorgar ALL PRIVILEGES a usuarios finales o aplicaciones?
    ---------------------------------------------------------------------------------------------------------
    Otorgar privilegios excesivos (como ALL PRIVILEGES, DROP, GRANT OPTION o permisos de modificación estructural) 
-   a una aplicación web o usuario operativo vulnera frontalmente el Principio de Mínimo Privilegio. 
+   a una aplicación web o usuario operativo vulnera  el principio de mínimo privilegio. 
    
    Relación directa con Inyecciones SQL y brechas de seguridad:
    Si una aplicación web sufre una vulnerabilidad de Inyección SQL (SQLi), un atacante que logre inyectar 
    código malicioso heredará exactamente los permisos del usuario con el que la aplicación se conecta a la base de datos.
-   Si ese usuario cuenta con permisos de administración global o ALL PRIVILEGES, el atacante no solo podrá leer o robar 
-   datos confidenciales, sino también ejecutar comandos destructivos del tipo DROP TABLE, modificar tablas del sistema, 
-   crear puertas traseras (nuevos usuarios con privilegios), o leer ficheros del servidor operativo (LOAD_FILE).
+   Si ese usuario cuenta con permisos de administración global o ALL PRIVILEGES, el atacante podrá ejecutar comandos destructivos del tipo DROP TABLE, modificar tablas del sistema, 
+   o leer ficheros del servidor operativo (LOAD_FILE).
 */
 
 
@@ -135,14 +130,11 @@ SHOW ACTIVE ROLES;
 /*
    ¿Qué brecha lógica o inconsistencia se introduce si se elimina WITH CHECK OPTION?
    ---------------------------------------------------------------------------------------------------------
-   Si un analista elimina la cláusula WITH CHECK OPTION en la vista 'v_articulos_gama_baja' bajo el pretexto 
-   de optimizar el rendimiento, se introduce una grave brecha de integridad lógica en la base de datos.
+   Si un analista elimina la cláusula WITH CHECK OPTION en la vista 'v_articulos_gama_baja'se introduce una grave brecha de integridad en la base de datos.
    
-   Cualquier usuario o proceso automatizado podría insertar un registro con un precio elevado (por ejemplo, 300.00 €) 
-   a través de dicha vista:
-   INSERT INTO v_articulos_gama_baja (nombre, precio, fabricante_id) VALUES ('Procesador i9', 300.00, 5);
-   
+   Cualquier usuario o proceso automatizado podría insertar un registro con un precio elevado a través de la vista.
+
    Como la vista ya no valida la condición WHERE (precio <= 50.00) en las operaciones de escritura, la fila se insertará 
-   correctamente en la tabla base 'articulos'. Sin embargo, al consultar de nuevo la vista 'v_articulos_gama_baja', 
-   ¡dicho artículo desaparecerá por completo de los resultados! Esto genera "datos fantasma" o inconsistencias ocultas.
+   correctamente en la tabla base 'articulos'.Al consultar de nuevo la vista 'v_articulos_gama_baja', 
+   dicho artículo desaparecerá por completo de los resultados.
 */
